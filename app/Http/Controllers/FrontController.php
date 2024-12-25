@@ -17,6 +17,21 @@ class FrontController extends Controller
         $this->frontService = $frontService;
     }
 
+    public function search(Request $request)
+    {
+        // Berikan nilai default jika 'keyword' tidak ada
+        $keyword = $request->input('keyword', '');
+
+        // Pastikan $keyword adalah string sebelum memanggil searchShoes
+        $shoes = $this->frontService->searchShoes($keyword);
+
+        return view('front.search', [
+            'shoes' => $shoes,
+            'keyword' => $keyword
+        ]);
+    }
+
+
     public function index()
     {
         $data = $this->frontService->getFrontPageData();

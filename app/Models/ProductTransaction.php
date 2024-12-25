@@ -52,6 +52,12 @@ class ProductTransaction extends Model
         return $this->belongsTo(Shoe::class, 'shoe_id');
     }
 
+    public function shoeSize(): BelongsTo
+    {
+        // Sebuah transaksi memiliki satu ukuran sepatu
+        return $this->belongsTo(ShoeSize::class, 'shoe_size');
+    }
+
     // Relasi many-to-one dengan model PromoCode
     public function promoCode(): BelongsTo
     {

@@ -21,7 +21,7 @@ class OrderRepository implements OrderRepositoryInterface
     {
         // Melakukan pencarian pada tabel ProductTransaction dengan kondisi ID transaksi dan nomor telepon
         return ProductTransaction::where('booking_trx_id', $bookingTrxId)
-                                    ->where('phone_number', $phoneNumber)
+                                    ->where('phone', $phoneNumber)
                                     ->first(); // Mengambil hasil pertama
     }
 
@@ -48,5 +48,12 @@ class OrderRepository implements OrderRepositoryInterface
         $orderData = array_merge($orderData, $data);
         // Menyimpan kembali data pesanan yang sudah diperbarui ke dalam sesi
         session(['orderData' => $orderData]);
+    }
+
+    // Fungsi untuk menghapus data pesanan dalam sesi
+    public function clearSession()
+    {
+        // Menghapus data pesanan dari sesi
+        Session::forget('orderData');
     }
 }

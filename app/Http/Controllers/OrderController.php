@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Shoe;
 use Illuminate\Http\Request;
 use App\Services\OrderService;
 use App\Models\ProductTransaction;
-use App\Models\Shoe;
 use App\Http\Requests\StoreOrderRequest;
 use App\Http\Requests\StorePaymentRequest;
+use App\Http\Requests\StoreCheckBookingRequest;
 use App\Http\Requests\StoreCustomerDataRequest;
 
 class OrderController extends Controller
@@ -75,33 +76,48 @@ class OrderController extends Controller
         return view('order.payment', $data);
     }
 
-    // Mengonfirmasi pembayaran
     public function paymentConfirm(StorePaymentRequest $request)
-{
-    try {
-        // Validasi data pembayaran
-        $validated = $request->validated();
+    {
+        try {
+            // Validasi data pembayaran
+            $validated = $request->validated();
 
-        // Memproses konfirmasi pembayaran dan mendapatkan ID transaksi produk
-        $productTransactionId = $this->orderService->paymentConfirm($validated);
+            // Memproses konfirmasi pembayaran dan mendapatkan ID transaksi produk
+            $productTransactionId = $this->orderService->paymentConfirm($validated);
 
-        if ($productTransactionId) {
+
             // Jika berhasil, arahkan ke halaman pesanan selesai
             return redirect()->route('front.order_finished', $productTransactionId);
+        } catch (\Exception $e) {
+            // Jika terjadi kesalahan, arahkan kembali ke halaman pembayaran
+            return redirect()->route('front.payment')->with('error', 'Pembayaran gagal: ' . $e->getMessage());
         }
-    } catch (\Exception $e) {
-        // Debugging: tampilkan detail error
-        dd($e);
-
-        // Arahkan kembali ke halaman sebelumnya dengan pesan error
-        return redirect()->back()->withErrors(['error' => 'Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi.']);
     }
-}
 
     // Menampilkan informasi transaksi setelah pesanan selesai
     public function orderFinished(ProductTransaction $productTransaction)
     {
         // Debugging untuk melihat data transaksi produk
-        dd($productTransaction);
+        //dd($productTransaction);
+
+        return view('order.order_finished', compact('productTransaction'));
+    }
+
+    public function checkBooking()
+    {
+        return view('order.my_order');
+    }
+
+    public function checkBookingDetails(StoreCheckBookingRequest $request)
+    {
+        $validated = $request->validated();
+
+        $orderDetails = $this->orderService->getMyOrderDetails($validated);
+
+        if($orderDetails){
+            return view('order.my_order_details', compact('orderDetails'));
+        }
+
+        return redirect()->route('front.check_booking')->withErrors('error', 'Transaksi tidak ditemukan');
     }
 }

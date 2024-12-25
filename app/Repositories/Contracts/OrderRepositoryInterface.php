@@ -19,4 +19,7 @@ interface OrderRepositoryInterface
 
     // Fungsi untuk mengambil data pesanan yang ada di dalam sesi
     public function getOrderDataFromSession();
+
+    // Fungsi untuk menghapus data pesanan yang ada di dalam sesi
+    public function clearSession();
 }

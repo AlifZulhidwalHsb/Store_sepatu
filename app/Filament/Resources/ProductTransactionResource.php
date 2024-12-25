@@ -12,9 +12,11 @@ use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextArea;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Components\FileUpload;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -33,110 +35,162 @@ class ProductTransactionResource extends Resource
     {
         return $form
             ->schema([
-                Wizard::make([
-                    Wizard\Step::make('Product and Price')
+                Forms\Components\Wizard::make([
+
+                    Forms\Components\Wizard\Step::make('Product and Price')
                         ->schema([
+
                             Grid::make(2)
-                                ->schema([
-                                    Select::make('shoe_id')
-                                        ->relationship('shoe', 'name')
-                                        ->searchable()
-                                        ->preload()
-                                        ->required()
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                            $shoe = Shoe::find($state);
-                                            $price = $shoe ? $shoe->price : 0;
-                                            $quantity = $get('quantity') ?? 1;
-                                            $subTotalAmount = $price * $quantity;
+                            ->schema([
+                                Forms\Components\Select::make('shoe_id')
+                                ->relationship('shoe', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(function ($state, callable $get, callable $set) {
 
-                                            $set('price', $price);
-                                            $set('sub_total_amount', $subTotalAmount);
+                                    $shoe = Shoe::find($state);
+                                    $price = $shoe ? $shoe->price : 0;
+                                    $quantity = $get('quantity') ?? 1;
+                                    $subTotalAmount = $price * $quantity;
 
-                                            $discount = $get('discount_amount') ?? 0;
-                                            $grandTotalAmount = $subTotalAmount - $discount;
-                                            $set('grand_total_amount', $grandTotalAmount);
+                                    $set('price', $price);
+                                    $set('sub_total_amount', $subTotalAmount);
 
-                                            $sizes = $shoe ? $shoe->sizes->pluck('size', 'id')->toArray() : [];
-                                            $set('shoe_sizes', $sizes);
-                                        }),
+                                    $discount = $get('discount_amount') ?? 0;
+                                    $grandTotalAmount = $subTotalAmount - $discount;
+                                    $set('grand_total_amount', $grandTotalAmount);
 
-                                    Select::make('shoe_size')
-                                        ->label('Shoe Size')
+                                    $sizes = $shoe ? $shoe->sizes->pluck('size', 'id')->toArray() : [];
+                                    $set('shoe_sizes', $sizes);
+                                })
+                                ->afterStateHydrated(function ($state, callable $get, callable $set) {
+                                    $shoeId = $state;
+                                    if($shoeId) {
+                                        $shoe = Shoe::find($shoeId);
+                                        $sizes = $shoe ? $shoe->sizes->pluck('size', 'id')->toArray() : [];
+                                        $set('shoe_sizes', $sizes);
+                                    }
+                                }),
+
+                                Forms\Components\Select::make('shoe_size')
+                                        ->label('Shoe_sizes')
                                         ->options(function (callable $get) {
                                             $sizes = $get('shoe_sizes');
-                                            return is_array($sizes) ? $sizes : [];
+                                            return is_array('$sizes') ? $sizes : [];
                                         })
-                                        ->required(),
-
-                                    TextInput::make('quantity')
                                         ->required()
-                                        ->numeric()
-                                        ->prefix('Qty')
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                            $price = $get('price');
-                                            $subTotalAmount = $price * $state;
-                                            $set('sub_total_amount', $subTotalAmount);
+                                        ->live(),
 
-                                            $discount = $get('discount_amount') ?? 0;
-                                            $grandTotalAmount = $subTotalAmount - $discount;
-                                            $set('grand_total_amount', $grandTotalAmount);
-                                        }),
+                                Forms\Components\Select::make('quantity')
+                                ->required()
+                                ->rules(['numeric'])
+                                ->prefix('Qty')
+                                ->live()
+                                ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                    $price = $get('price');
+                                    $quantity = $state;
+                                    $subTotalAmount = $price * $quantity;
 
-                                    Select::make('promo_code_id')
-                                        ->relationship('promoCode', 'code')
-                                        ->searchable()
-                                        ->preload()
-                                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                            $subTotalAmount = $get('sub_total_amount');
-                                            $promoCode = PromoCode::find($state);
-                                            $discount = $promoCode ? $promoCode->discount_amount : 0;
+                                    $set('sub_total_amount', $subTotalAmount);
 
-                                            $set('discount_amount', $discount);
-                                            $set('grand_total_amount', $subTotalAmount - $discount);
-                                        }),
+                                    $discount = $get('discount_amount') ?? 0;
+                                    $grandTotalAmount = $subTotalAmount - $discount;
+                                    $set('grand_total_amount', $grandTotalAmount);
+                                }),
 
-                                    TextInput::make('sub_total_amount')
-                                        ->required()
-                                        ->readOnly()
-                                        ->numeric()
-                                        ->prefix('IDR'),
+                                Forms\Components\Select::make('promo_code_id')
+                                ->relationship('promoCode', 'code')
+                                ->searchable()
+                                ->preload()
+                                ->live()
+                                ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                    $subTotalAmount = $get('sub_total_amount');
+                                    $promoCode = PromoCode::find($state);
+                                    $discount = $promoCode ? $promoCode->discount_amount : 0;
 
-                                    TextInput::make('grand_total_amount')
-                                        ->required()
-                                        ->readOnly()
-                                        ->numeric()
-                                        ->prefix('IDR'),
+                                    $set('discount_amount', $discount);
 
-                                    TextInput::make('discount_amount')
-                                        ->required()
-                                        ->readOnly()
-                                        ->numeric()
-                                        ->prefix('IDR'),
-                                ]),
-                        ]),
+                                    $grandTotalAmount = $subTotalAmount - $discount;
+                                    $set('grand_total_amount', $grandTotalAmount);
+                                }),
 
-                    Wizard\Step::make('Customer Information')
+                                Forms\Components\TextInput::make('sub_total_amount')
+                                ->required()
+                                ->readOnly()
+                                ->numeric()
+                                ->prefix('IDR'),
+
+                                Forms\Components\TextInput::make('grand_amount')
+                                ->required()
+                                ->readOnly()
+                                ->numeric()
+                                ->prefix('IDR'),
+
+                                Forms\Components\TextInput::make('discount_amount')
+                                ->required()
+                                ->numeric()
+                                ->prefix('IDR'),
+                            ]),
+
+                    ]),
+
+                    Forms\Components\Wizard\Step::make('Customer Information')
                         ->schema([
+
                             Grid::make(2)
-                                ->schema([
-                                    TextInput::make('name')->required()->maxLength(255),
-                                    TextInput::make('phone')->required()->maxLength(255),
-                                    TextInput::make('email')->required()->maxLength(255),
-                                    Textarea::make('address')->rows(3)->required(),
-                                    TextInput::make('city')->required()->maxLength(255),
-                                    TextInput::make('post_code')->required()->maxLength(255),
-                                ]),
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                ->required()
+                                ->maxLength(255),
+
+                                Forms\Components\TextInput::make('phone')
+                                    ->required()
+                                    ->maxLength(255),
+
+                                Forms\Components\TextInput::make('email')
+                                    ->required()
+                                    ->maxLength(255),
+
+                                Forms\Components\TextArea::make('address')
+                                    ->rows(5)
+                                    ->required(),
+
+                                Forms\Components\TextInput::make('city')
+                                    ->required()
+                                    ->maxLength(255),
+
+                                Forms\Components\TextInput::make('post_code')
+                                    ->required()
+                                    ->maxLength(255),
+                            ]),
                         ]),
 
-                    Wizard\Step::make('Payment Information')
-                        ->schema([
-                            TextInput::make('booking_trx_id')->required()->maxLength(255),
-                            Toggle::make('is_paid')->label('Apakah sudah membayar?')->required(),
-                            FileUpload::make('proof')->image()->required(),
-                        ]),
-                ]),
+                        Forms\Components\Wizard\Step::make('Payment Information')
+                            ->schema([
+
+                                Forms\Components\Toggle::make('booking_trx_id')
+                                    ->required(),
+
+                                ToggleButtons::make('is_paid')
+                                    ->label('Apakah Sudah membayar?')
+                                    ->boolean()
+                                    ->grouped()
+                                    ->icons([
+                                        true => 'heroicon-o-pencil' ,
+                                        false =>'heroicon-o-clock' ,
+                                    ])
+                                    ->required(),
+
+                                Forms\Components\FileUpload::make('proof')
+                                    ->required()
+                                    ->image()
+                            ]),
+
+                ])
+                ->columnSpan('full')
+                ->skippable()
             ]);
     }
 
@@ -144,15 +198,20 @@ class ProductTransactionResource extends Resource
     {
         return $table
             ->columns([
-                ImageColumn::make('shoe.thumbnail'),
-                TextColumn::make('name')->searchable(),
-                TextColumn::make('booking_trx_id')->searchable(),
-                IconColumn::make('is_paid')
+                Tables\Columns\ImageColumn::make('shoe.thumbnail'),
+
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('booking_trx_id')
+                    ->searchable(),
+
+                Tables\Columns\IconColumn::make('is_paid')
                     ->boolean()
                     ->trueColor('success')
                     ->falseColor('danger')
                     ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
+                    ->falseIcon('heroicon-o-clock')
                     ->label('Terverifikasi'),
             ])
             ->filters([
@@ -163,6 +222,23 @@ class ProductTransactionResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\ViewAction::make(),
+
+                Tables\Actions\Action::make('approve')
+                    ->label('Approve')
+                    ->action(function (ProductTransaction $record) {
+                        $record->is_paid = true;
+                        $record->save();
+
+                        Notification::make()
+                            ->title('Order Approved')
+                            ->success()
+                            ->body('The order has been approved successfully.')
+                            ->send();
+                    })
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn (ProductTransaction $record) =>  !$record->is_paid),
+
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

@@ -16,4 +16,7 @@ interface ShoeRepositoryInterface
 
     // Fungsi untuk mengambil harga sepatu berdasarkan ID sepatu
     public function getPrice($shoeId);
+
+    // Fungsi untuk mencari sepatu berdasarkan kata kunci
+    public function searchByName(string $keyword);
 }

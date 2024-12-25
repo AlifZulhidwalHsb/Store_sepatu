@@ -7,11 +7,16 @@ use App\Http\Controllers\OrderController;
 // Route untuk halaman utama
 Route::get('/', [FrontController::class, 'index'])->name('front.index');
 
+Route::get('/search', [FrontController::class, 'search'])->name('front.search');
+
 // Route untuk kategori berdasarkan slug
 Route::get('/browse/{category:slug}', [FrontController::class, 'category'])->name('front.category');
 
 // Route untuk detail produk berdasarkan slug
 Route::get('/details/{shoe:slug}', [FrontController::class, 'details'])->name('front.details');
+
+Route::get('/check-booking', [OrderController::class, 'checkBooking'])->name('front.check_booking');
+Route::post('/check-booking/details', [OrderController::class, 'checkBookingDetails'])->name('front.check_booking_details');
 
 // Route untuk memulai proses pemesanan berdasarkan slug produk
 Route::post('/order/begin/{shoe:slug}', [OrderController::class, 'saveOrder'])->name('front.save_order');

@@ -45,6 +45,11 @@ class OrderService
         $this->orderRepository->saveToSession($orderData);
     }
 
+    public function getMyOrderDetails(array $validated){
+        return $this->orderRepository->findByTrxIdAndPhoneNumber($validated['booking_trx_id'],
+        $validated['phone']);
+    }
+
     // Fungsi untuk mendapatkan detail pesanan yang sudah disimpan di sesi
     public function getOrderDetails()
     {
@@ -108,10 +113,10 @@ class OrderService
         $this->orderRepository->updateSessionData($data);
     }
 
-    // Fungsi untuk mengonfirmasi pembayaran dan menyimpan transaksi ke database
     public function paymentConfirm(array $validated)
     {
         $productTransactionId = null;
+        $orderData = $this->orderRepository->getOrderDataFromSession();
 
         try {
             // Menggunakan transaksi database untuk memastikan konsistensi data
@@ -139,13 +144,16 @@ class OrderService
                 $validated['shoe_size'] = $orderData['size_id'];
 
                 $validated['is_paid'] = false; // Status pembayaran belum dilakukan
-                
+
                 $validated['booking_trx_id'] = ProductTransaction::generateUniqueTrxId(); // Menghasilkan ID transaksi unik
 
                 // Membuat transaksi baru dan mendapatkan ID transaksi
                 $newTransaction = $this->orderRepository->createTransaction($validated);
 
+
                 $productTransactionId = $newTransaction->id;
+
+                $this->orderRepository->clearSession(); // Membersihkan data pesanan di sesi
             });
         } catch (\Exception $e) {
             // Menangani error dan mencatatnya ke log
@@ -157,4 +165,6 @@ class OrderService
         // Mengembalikan ID transaksi yang berhasil dibuat
         return $productTransactionId;
     }
+
+
 }
